@@ -51,7 +51,7 @@
                             <q-input 
                                 dark 
                                 filled 
-                                v-model="employeeId" 
+                                v-model="form.employeeId" 
                                 label="Employee ID (e.g. EMP-1001)" 
                                 color="primary"
                                 label-color="grey-4"
@@ -68,7 +68,7 @@
                             <q-input 
                                 dark 
                                 filled 
-                                v-model="identifier" 
+                                v-model="form.identifier" 
                                 label="Email or Phone Number" 
                                 color="primary"
                                 label-color="grey-4"
@@ -84,7 +84,7 @@
                          <q-input 
                             dark 
                             filled 
-                            v-model="password" 
+                            v-model="form.password" 
                             :type="showPassword ? 'text' : 'password'"
                             label="Password" 
                             color="primary"

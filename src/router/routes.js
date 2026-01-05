@@ -24,6 +24,11 @@ const routes = [
     path: '/pricing',
     component: () => import('pages/PricingPage.vue')
   },
+  {
+    path: '/admin',
+    component: () => import('pages/AdminDashboardPage.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
 
   // Always leave this as last one,
   // but you can also remove it

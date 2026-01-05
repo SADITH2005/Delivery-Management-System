@@ -234,10 +234,14 @@ const onSubmit = async () => {
         userData.department = form.department
         
         // Pre-check ID
-        const check = authStore.verifyEmployeeId(form.employeeId)
+        const check = await authStore.verifyEmployeeId(form.employeeId)
         if (!check.valid) {
              $q.notify({ type: 'negative', message: check.message })
              return
+        }
+        // If the ID determines the role (e.g. driver vs clerk), use it
+        if (check.role) {
+            userData.role = check.role
         }
     }
 

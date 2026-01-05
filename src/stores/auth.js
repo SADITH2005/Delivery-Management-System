@@ -40,26 +40,31 @@ export const useAuthStore = defineStore('auth', () => {
      */
     const verifyEmployeeId = async (id) => {
         try {
-            // For MVP (and since we don't have Admin panel yet to add IDs), 
-            // we will simulate a check OR check a collection if it existed.
-            // Let's assume there is a collection 'valid_employee_ids' 
-            // But since the user wants Manual ID assignment, we can allow ANY ID 
-            // as long as it's not taken by another Registered User.
+            // 1. Check if this ID is already assigned to a registered user
+            const qUser = query(collection(db, "users"), where("employeeId", "==", id));
+            const userSnapshot = await getDocs(qUser);
             
-            // Check if this ID is already assigned to a user profile
-            const q = query(collection(db, "users"), where("employeeId", "==", id));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
+            if (!userSnapshot.empty) {
                 return { valid: false, message: 'Employee ID is already registered.' };
             }
             
-            // If we want to strictly only allow IDs that Admin Created beforehand:
-            // const idRef = doc(db, 'allowed_ids', id);
-            // const idSnap = await getDoc(idRef);
-            // if (!idSnap.exists()) return { valid: false, message: 'Invalid Employee ID.' };
+            // 2. Check if the ID exists in the 'valid_employee_ids' whitelist
+            // We search where 'id' field matches the input ID (assuming documents are not named by ID, but have an ID field)
+            // Or we can assume document ID IS the employee ID. Let's assume field 'id' for flexibility.
+            const qValid = query(collection(db, "valid_employee_ids"), where("id", "==", id));
+            const validSnapshot = await getDocs(qValid);
 
-            return { valid: true };
+            if (validSnapshot.empty) {
+                return { valid: false, message: 'Invalid Employee ID (Not found in system).' };
+            }
+            
+            // Optional: Check if the valid ID is marked as 'used' (though step 1 covers registered users)
+            const idData = validSnapshot.docs[0].data();
+            if (idData.status === 'used') {
+                 return { valid: false, message: 'Employee ID has already been used.' };
+            }
+
+            return { valid: true, role: idData.role || 'employee' };
         } catch (e) {
             console.error(e);
             return { valid: false, message: 'Verification failed.' };
@@ -101,6 +106,18 @@ export const useAuthStore = defineStore('auth', () => {
 
             // 3. Save to Firestore
             await setDoc(doc(db, 'users', res.user.uid), profileData);
+            
+            // 4. If Employee, mark the ID as used in the whitelist
+            // We need to find the doc id first because we stored it with auto-id or custom-id
+            if (userData.role === 'employee' || userData.role === 'driver' || userData.role === 'logistics') {
+                 // We query by the 'id' field
+                 const qValid = query(collection(db, "valid_employee_ids"), where("id", "==", userData.employeeId));
+                 const validSnapshot = await getDocs(qValid);
+                 if (!validSnapshot.empty) {
+                     const validDocId = validSnapshot.docs[0].id;
+                     await setDoc(doc(db, "valid_employee_ids", validDocId), { status: 'used' }, { merge: true });
+                 }
+            }
             
             userProfile.value = profileData;
             loading.value = false;
