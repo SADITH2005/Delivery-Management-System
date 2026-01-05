@@ -71,6 +71,22 @@
                                     <q-icon name="badge" color="grey-5" />
                                 </template>
                             </q-input>
+                            
+                             <q-input 
+                                dark 
+                                filled 
+                                v-model="form.email" 
+                                label="Work Email Address"
+                                type="email"
+                                color="secondary" 
+                                label-color="grey-4" 
+                                class="q-mt-sm"
+                            >
+                                <template v-slot:prepend>
+                                    <q-icon name="email" color="grey-5" />
+                                </template>
+                            </q-input>
+
                              <q-input dark filled v-model="form.department" label="Department" color="secondary" label-color="grey-4" class="q-mt-md" />
                         </div>
 
@@ -177,10 +193,14 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import ThreeBackground from 'components/ThreeBackground.vue'
+import { useAuthStore } from 'stores/auth'
+import { useQuasar } from 'quasar'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const $q = useQuasar()
+
 const userType = ref('customer')
-const loading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
@@ -195,13 +215,40 @@ const form = reactive({
     confirmPassword: ''
 })
 
-const onSubmit = () => {
-    loading.value = true
-    setTimeout(() => {
-        loading.value = false
-        console.log('Registered as:', userType.value, form)
+const onSubmit = async () => {
+    if (form.password !== form.confirmPassword) {
+        $q.notify({ type: 'negative', message: 'Passwords do not match' })
+        return
+    }
+
+    const userData = {
+        name: `${form.firstName} ${form.lastName}`,
+        email: form.email,
+        password: form.password,
+        role: userType.value,
+        phone: form.phone
+    }
+
+    if (userType.value === 'employee') {
+        userData.employeeId = form.employeeId
+        userData.department = form.department
+        
+        // Pre-check ID
+        const check = authStore.verifyEmployeeId(form.employeeId)
+        if (!check.valid) {
+             $q.notify({ type: 'negative', message: check.message })
+             return
+        }
+    }
+
+    const result = await authStore.register(userData)
+    
+    if (result.success) {
+        $q.notify({ type: 'positive', message: 'Account created successfully!' })
         router.push('/login')
-    }, 1500)
+    } else {
+        $q.notify({ type: 'negative', message: result.message })
+    }
 }
 </script>
 

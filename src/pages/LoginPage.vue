@@ -134,26 +134,66 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import ThreeBackground from 'components/ThreeBackground.vue'
+import { useAuthStore } from 'stores/auth'
+import { useQuasar } from 'quasar'
 
 const router = useRouter()
-const userType = ref('customer')
-const loading = ref(false)
+const authStore = useAuthStore()
+const $q = useQuasar()
+
+// State
+const userType = ref('customer') // 'customer' | 'employee'
 const showPassword = ref(false)
 const rememberMe = ref(false)
-const identifier = ref('')
-const employeeId = ref('')
-const password = ref('')
+const loading = ref(false)
 
-const onSubmit = () => {
+// Form
+const form = reactive({
+    identifier: '', // Email or Phone for Customer
+    employeeId: '', // For Employee
+    password: ''
+})
+
+const onSubmit = async () => {
     loading.value = true
-    setTimeout(() => {
-        loading.value = false
-        console.log('Logged in as:', userType.value)
-        router.push('/')
-    }, 1500)
+    
+    // Employee Login
+    if (userType.value === 'employee') {
+        // In a real app, Employee ID might map to an email, or we sign in with (ID + @dms.com).
+        // For this system, let's assume the Auth Store handles the logic of finding the email via ID,
+        // OR the user enters Email for login even if they are an employee (but the UI asks for ID?).
+        
+        // CORRECTION based on common firebase patterns:
+        // You generally need Email/Pass. 
+        // User Requirement: "Role-Based... based solely on the format or value of the assigned Employee ID during login."
+        // This implies they LOGIN with the ID. 
+        // Strategy: Append a domain to ID to make it an email -> `EMP001@dms.internal` (Hidden from user).
+        
+        const fakeEmail = `${form.employeeId}@dms.internal`
+        const result = await authStore.login(fakeEmail, form.password)
+        handleLoginResult(result)
+
+    } else {
+        // Customer Login (Email or Phone)
+        // If phone, simulate email lookup or use phone auth. For now assume Email.
+        const result = await authStore.login(form.identifier, form.password)
+        handleLoginResult(result)
+    }
+}
+
+const handleLoginResult = (result) => {
+    loading.value = false
+    if (result.success) {
+        $q.notify({ type: 'positive', message: `Welcome back!` })
+        if (result.role === 'admin') router.push('/admin')
+        else if (result.role === 'employee') router.push('/employee-dashboard')
+        else router.push('/')
+    } else {
+        $q.notify({ type: 'negative', message: result.message })
+    }
 }
 </script>
 
