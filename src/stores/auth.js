@@ -74,6 +74,11 @@ export const useAuthStore = defineStore('auth', () => {
         error.value = null;
 
         try {
+            // HARDCODED ADMIN FOR SETUP
+            if (userData.email === 'sadithrashmika05@gmail.com') {
+                userData.role = 'admin';
+            }
+
             // 1. Create Auth User
             const res = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
             
