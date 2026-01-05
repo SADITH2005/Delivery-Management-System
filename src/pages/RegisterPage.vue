@@ -13,7 +13,7 @@
                  <q-card class="bg-dark-glass q-pa-lg shadow-24 relative-position" style="width: 100%; max-width: 500px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
                     
                     <!-- Home Button (Inside Card) -->
-                    <q-btn round flat icon="home" color="white" class="absolute-top-right q-ma-md z-top" to="/" />
+                    <q-btn round flat icon="home" color="white" class="absolute-top-left q-ma-md z-top" to="/" />
 
                     <div class="text-center q-mb-lg">
                         <q-icon name="person_add" size="3em" color="secondary" class="q-mb-md" />
