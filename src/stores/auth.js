@@ -74,6 +74,9 @@ export const useAuthStore = defineStore('auth', () => {
     /**
      * Register a new user
      */
+    /**
+     * Register a new user
+     */
     const register = async (userData) => {
         loading.value = true;
         error.value = null;
@@ -97,10 +100,10 @@ export const useAuthStore = defineStore('auth', () => {
                 createdAt: new Date()
             };
 
-            // Employee Specifics
-            if (userData.role === 'employee') {
+            // Employee Specifics (Apply to all staff roles likely)
+            if (userData.employeeId) {
                 profileData.employeeId = userData.employeeId;
-                profileData.department = userData.department;
+                profileData.department = userData.department || '';
                 profileData.status = "active";
             }
 
@@ -136,13 +139,33 @@ export const useAuthStore = defineStore('auth', () => {
 
     /**
      * Login logic
+     * Supports Email OR Employee ID
      */
-    const login = async (email, password) => {
+    const login = async (identifier, password) => {
         loading.value = true;
         error.value = null;
 
         try {
-            const res = await signInWithEmailAndPassword(auth, email, password);
+            let emailToUse = identifier;
+
+            // Check if identifier is NOT an email (simple check: no '@')
+            // If so, assume it's an Employee ID and resolve email from Firestore
+            if (!identifier.includes('@')) {
+                const q = query(collection(db, "users"), where("employeeId", "==", identifier));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                     loading.value = false;
+                     return { success: false, message: "Invalid ID or ID not registered yet." };
+                }
+                
+                // Assuming ID is unique, take first match
+                const userData = querySnapshot.docs[0].data();
+                emailToUse = userData.email;
+            }
+
+            // Perform Firebase Login
+            const res = await signInWithEmailAndPassword(auth, emailToUse, password);
             user.value = res.user;
             
             // Fetch Role
@@ -152,10 +175,11 @@ export const useAuthStore = defineStore('auth', () => {
             if (docSnap.exists()) {
                 userProfile.value = docSnap.data();
                 loading.value = false;
-                return { success: true, role: userProfile.value.role };
+                // Return explicitly success message for UI to display "Login Success"
+                return { success: true, role: userProfile.value.role, message: "Login Successful!" };
             } else {
                 loading.value = false;
-                return { success: true, role: 'customer' }; // Default fallback
+                return { success: true, role: 'customer', message: "Login Successful!" }; // Default fallback
             }
 
         } catch (e) {

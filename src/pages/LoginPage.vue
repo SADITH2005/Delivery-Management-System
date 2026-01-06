@@ -52,7 +52,7 @@
                                 dark 
                                 filled 
                                 v-model="form.employeeId" 
-                                label="Employee ID (e.g. EMP-1001)" 
+                                label="Employee ID or Email" 
                                 color="primary"
                                 label-color="grey-4"
                                 class="text-weight-medium"
@@ -127,6 +127,8 @@
                     </div>
                  </q-card>
              </transition>
+
+             <!-- Dev Tools Removed -->
          </div>
       </q-page>
     </q-page-container>
@@ -160,37 +162,34 @@ const form = reactive({
 const onSubmit = async () => {
     loading.value = true
     
-    // Employee Login
-    if (userType.value === 'employee') {
-        // In a real app, Employee ID might map to an email, or we sign in with (ID + @dms.com).
-        // For this system, let's assume the Auth Store handles the logic of finding the email via ID,
-        // OR the user enters Email for login even if they are an employee (but the UI asks for ID?).
-        
-        // CORRECTION based on common firebase patterns:
-        // You generally need Email/Pass. 
-        // User Requirement: "Role-Based... based solely on the format or value of the assigned Employee ID during login."
-        // This implies they LOGIN with the ID. 
-        // Strategy: Append a domain to ID to make it an email -> `EMP001@dms.internal` (Hidden from user).
-        
-        const fakeEmail = `${form.employeeId}@dms.internal`
-        const result = await authStore.login(fakeEmail, form.password)
-        handleLoginResult(result)
-
-    } else {
-        // Customer Login (Email or Phone)
-        // If phone, simulate email lookup or use phone auth. For now assume Email.
-        const result = await authStore.login(form.identifier, form.password)
-        handleLoginResult(result)
+    // Unified Login Logic
+    // Both Customer and Employee forms now pass their identifier to the store.
+    // The store handles "Is this an ID or Email?" logic.
+    
+    // Determine the identifier based on the active tab/userType
+    const identifier = userType.value === 'employee' ? form.employeeId : form.identifier
+    
+    if (!identifier) {
+        $q.notify({ type: 'warning', message: 'Please enter your ID or Email' })
+        loading.value = false
+        return
     }
+
+    const result = await authStore.login(identifier, form.password)
+    
+    handleLoginResult(result)
 }
 
 const handleLoginResult = (result) => {
     loading.value = false
     if (result.success) {
-        $q.notify({ type: 'positive', message: `Welcome back!` })
+        // Use the message from the backend if available
+        $q.notify({ type: 'positive', message: result.message || 'Login Success!' })
+        
+        // Router Redirects based on Role
         if (result.role === 'admin') router.push('/admin')
-        else if (result.role === 'employee') router.push('/employee-dashboard')
-        else router.push('/')
+        else if (result.role === 'employee' || result.role === 'driver' || result.role === 'logistics') router.push('/employee-dashboard')
+        else router.push('/') // Customer
     } else {
         $q.notify({ type: 'negative', message: result.message })
     }
